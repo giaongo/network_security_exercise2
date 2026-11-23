@@ -1,0 +1,87 @@
+name: company
+
+x-host: &host
+  image: cs-e4300/toolbox:2026
+  pull_policy: never
+  command: sleep infinity
+  init: true
+  restart: unless-stopped
+  cap_add: [NET_ADMIN]
+
+services:
+  pc1:
+    <<: *host
+    container_name: pc1
+    hostname: pc1
+    dns: [10.14.0.1]
+    networks: [users]
+
+  llm-server:
+    <<: *host
+    container_name: llm-server
+    hostname: llm-server
+    dns: [10.15.0.1]
+    networks:
+      ai_control: {ipv4_address: 10.15.0.10}
+
+  agent-runner:
+    <<: *host
+    container_name: agent-runner
+    hostname: agent-runner
+    dns: [10.16.0.1]
+    networks: [ai_sandbox]
+
+  printer:
+    <<: *host
+    container_name: printer
+    hostname: printer
+    dns: [10.17.0.1]
+    networks: [facilities]
+
+  proxy:
+    <<: *host
+    container_name: proxy
+    hostname: proxy
+    dns: [10.18.0.1]
+    networks:
+      dmz: {ipv4_address: 10.18.0.10}
+
+  remote-user:
+    <<: *host
+    container_name: remote-user
+    hostname: remote-user
+    dns: [100.97.252.1]
+    networks: [wan]
+
+networks:
+  users:
+    driver: macvlan
+    driver_opts: {parent: trunk0.14}
+    ipam:
+      config: [{subnet: 10.14.0.0/24, gateway: 10.14.0.1}]
+  ai_control:
+    driver: macvlan
+    driver_opts: {parent: trunk0.15}
+    ipam:
+      config: [{subnet: 10.15.0.0/24, gateway: 10.15.0.1}]
+  ai_sandbox:
+    driver: macvlan
+    driver_opts: {parent: trunk0.16}
+    ipam:
+      config: [{subnet: 10.16.0.0/24, gateway: 10.16.0.1}]
+  facilities:
+    driver: macvlan
+    driver_opts: {parent: trunk0.17}
+    ipam:
+      config: [{subnet: 10.17.0.0/24, gateway: 10.17.0.1}]
+  dmz:
+    driver: macvlan
+    driver_opts: {parent: trunk0.18}
+    ipam:
+      config: [{subnet: 10.18.0.0/24, gateway: 10.18.0.1}]
+  # The isp-network NAT network; .1 is VirtualBox's NAT gateway, pfSense WAN is .10.
+  wan:
+    driver: ipvlan
+    driver_opts: {parent: wan0, ipvlan_mode: l2}
+    ipam:
+      config: [{subnet: 100.97.252.0/24, gateway: 100.97.252.1, ip_range: 100.97.252.128/25}]
